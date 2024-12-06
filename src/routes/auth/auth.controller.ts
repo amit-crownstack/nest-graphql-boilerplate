@@ -8,6 +8,9 @@ import { RegisterUserBodyDto } from './dto/register-user-body.dto';
 import { ResponseFormatterService } from 'src/common/helper_services/response_formatter.service';
 import { UserEntity } from '../users/entity/user.entity';
 import { SignupResponseSchema } from 'src/responseSchema/auth/signup.schema';
+import { Public } from './decorators/public.decorator';
+import { LoginResponseSchema } from 'src/responseSchema/auth/login.schema';
+import { GetCurrentUser } from './decorators/get-current-user.decorator';
 
 @Controller('auth')
 @ApiTags('Authentication')
@@ -18,15 +21,21 @@ export class AuthController {
   ) {}
 
   @Post('login')
+  @Public()
   async login(@Body() body: LoginUserBodyDto): Promise<SuccessResponse> {
     const userDetail = await this.authService.login(body);
-    return new SuccessResponse(
-      ResponseMesages.USER_LOGIN_SUCCESSFULLY,
-      userDetail,
+    const user = this.responseFormatterService.formatResponse(
+      userDetail.user,
+      LoginResponseSchema,
     );
+    return new SuccessResponse(ResponseMesages.USER_LOGIN_SUCCESSFULLY, {
+      user: user,
+      token: userDetail.tokens,
+    });
   }
 
   @Post('signup')
+  @Public()
   async signup(@Body() body: RegisterUserBodyDto): Promise<SuccessResponse> {
     let userDetail: Partial<UserEntity> | Partial<UserEntity>[] =
       await this.authService.createNewUser(body);
@@ -41,10 +50,11 @@ export class AuthController {
   }
 
   @Patch('logout')
-  async logout(): Promise<any> {
-    return {
-      message: 'Logout successfully',
-    };
+  async logout(
+    @GetCurrentUser('sub') userID: string,
+  ): Promise<SuccessResponse> {
+    await this.authService.logout(userID);
+    return new SuccessResponse(ResponseMesages.USER_LOGOUT_SUCCESSFULLY);
   }
 
   @Patch('refresh-token')

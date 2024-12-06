@@ -3,7 +3,7 @@ import { VerificationType } from './enum/verification-type.enum';
 import { VerificationStatus } from './enum/verification-status.enum';
 import { BaseEntity } from 'src/common/entity/baseEntity';
 
-@Entity('user_verifications')
+@Entity('user_verification')
 export class UserVerification extends BaseEntity {
   @Column({ type: 'uuid' })
   @Index()
