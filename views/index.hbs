@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Server Health Dashboard</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f9f9f9;
+      margin: 0;
+      padding: 20px;
+    }
+    .dashboard {
+      max-width: 800px;
+      margin: auto;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+    }
+    .card {
+      flex: 1 1 calc(48% - 20px);
+      background-color: #fff;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      padding: 20px;
+      text-align: center;
+      border-left: 6px solid;
+    }
+    .card.healthy {
+      border-color: #4caf50;
+    }
+    .card.unhealthy {
+      border-color: #f44336;
+    }
+    .card.warning {
+      border-color: #ff9800;
+    }
+    .card h2 {
+      margin: 0 0 10px;
+      font-size: 18px;
+      color: #333;
+    }
+    .card p {
+      margin: 0;
+      font-size: 14px;
+      color: #666;
+    }
+    .footer {
+      text-align: center;
+      margin-top: 20px;
+      font-size: 14px;
+      color: #aaa;
+    }
+  </style>
+</head>
+<body>
+  <div class="dashboard">
+    <!-- Health Status Card -->
+    <div class="card {{#if healthStatus}}healthy{{else}}unhealthy{{/if}}">
+      <h2>Health Status</h2>
+      <p>{{#if healthStatus}}Healthy{{else}}Unhealthy{{/if}}</p>
+    </div>
+
+    <!-- Memory Usage Card -->
+    <div class="card warning">
+      <h2>Memory Usage</h2>
+      <p>{{serverUtilization.memoryUsage}}</p>
+    </div>
+
+    <!-- CPU Load Card -->
+    <div class="card warning">
+      <h2>CPU Load</h2>
+      <p>{{serverUtilization.cpuLoad}}</p>
+    </div>
+
+    <!-- Timestamp Card -->
+    <div class="card">
+      <h2>Timestamp</h2>
+      <p>{{timestamp}}</p>
+    </div>
+  </div>
+  <div class="footer">
+    Server Health Dashboard | {{currentDate}}
+  </div>
+</body>
+</html>

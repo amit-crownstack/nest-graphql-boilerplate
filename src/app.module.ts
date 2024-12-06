@@ -15,6 +15,7 @@ import { AuthModule } from './routes/auth/auth.module';
 import { TreatmentModule } from './routes/treatment/treatment.module';
 import { ResponseFormatterService } from './common/helper_services/response_formatter.service';
 import authConfig from './routes/auth/config/auth.config';
+import { ServerHealthModule } from './routes/server_health/server_health.module';
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import authConfig from './routes/auth/config/auth.config';
     PlansModule,
     AuthModule,
     TreatmentModule,
+    ServerHealthModule,
   ],
   providers: [ResponseFormatterService],
 })
