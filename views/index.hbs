@@ -52,36 +52,117 @@
       font-size: 14px;
       color: #aaa;
     }
+    #login-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0,0,0,0.7);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+    }
+    #login-form {
+      background-color: white;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      width: 300px;
+    }
+    #login-form input {
+      width: 100%;
+      padding: 10px;
+      margin: 10px 0;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+    #login-form button {
+      width: 100%;
+      padding: 10px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    #error-message {
+      color: red;
+      text-align: center;
+      margin-top: 10px;
+    }
+    .hidden {
+      display: none !important;
+    }
   </style>
 </head>
 <body>
-  <div class="dashboard">
-    <!-- Health Status Card -->
-    <div class="card {{#if healthStatus}}healthy{{else}}unhealthy{{/if}}">
-      <h2>Health Status</h2>
-      <p>{{#if healthStatus}}Healthy{{else}}Unhealthy{{/if}}</p>
-    </div>
-
-    <!-- Memory Usage Card -->
-    <div class="card warning">
-      <h2>Memory Usage</h2>
-      <p>{{serverUtilization.memoryUsage}}</p>
-    </div>
-
-    <!-- CPU Load Card -->
-    <div class="card warning">
-      <h2>CPU Load</h2>
-      <p>{{serverUtilization.cpuLoad}}</p>
-    </div>
-
-    <!-- Timestamp Card -->
-    <div class="card">
-      <h2>Timestamp</h2>
-      <p>{{timestamp}}</p>
+  <!-- Login Overlay -->
+  <div id="login-overlay">
+    <div id="login-form">
+      <h2>Login</h2>
+      <input type="text" id="username" placeholder="Username">
+      <input type="password" id="password" placeholder="Password">
+      <button onclick="authenticate()">Login</button>
+      <div id="error-message"></div>
     </div>
   </div>
-  <div class="footer">
-    Server Health Dashboard | {{currentDate}}
+
+  <!-- Dashboard Content -->
+  <div id="dashboard-content" class="hidden">
+    <div class="dashboard">
+      <!-- Health Status Card -->
+      <div class="card {{#if healthStatus}}healthy{{else}}unhealthy{{/if}}">
+        <h2>Health Status</h2>
+        <p>{{#if healthStatus}}Healthy{{else}}Unhealthy{{/if}}</p>
+      </div>
+
+      <!-- Memory Usage Card -->
+      <div class="card warning">
+        <h2>Memory Usage</h2>
+        <p>{{serverUtilization.memoryUsage}}</p>
+      </div>
+
+      <!-- CPU Load Card -->
+      <div class="card warning">
+        <h2>CPU Load</h2>
+        <p>{{serverUtilization.cpuLoad}}</p>
+      </div>
+
+      <!-- Timestamp Card -->
+      <div class="card">
+        <h2>Timestamp</h2>
+        <p>{{timestamp}}</p>
+      </div>
+    </div>
+    <div class="footer">
+      Server Health Dashboard | {{currentDate}}
+    </div>
   </div>
+
+  <script>
+    function authenticate() {
+      const username = document.getElementById('username').value;
+      const password = document.getElementById('password').value;
+      const errorMessage = document.getElementById('error-message');
+      const loginOverlay = document.getElementById('login-overlay');
+      const dashboardContent = document.getElementById('dashboard-content');
+
+      // Simple frontend authentication
+      if (username === 'admin' && password === 'admin') {
+        loginOverlay.classList.add('hidden');
+        dashboardContent.classList.remove('hidden');
+        errorMessage.textContent = '';
+      } else {
+        errorMessage.textContent = 'Invalid username or password';
+        // Clear password field
+        document.getElementById('password').value = '';
+      }
+    }
+
+    // On page load, ensure dashboard is hidden
+    document.getElementById('dashboard-content').classList.add('hidden');
+  </script>
 </body>
 </html>
