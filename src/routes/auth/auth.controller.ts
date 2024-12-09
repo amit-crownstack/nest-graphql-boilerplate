@@ -1,4 +1,4 @@
-import { Body, Controller, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Patch, Post, UseGuards } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { AuthService } from './provider/auth.service';
 import { LoginUserBodyDto } from './dto/login-user-body.dto';
@@ -11,6 +11,8 @@ import { SignupResponseSchema } from 'src/responseSchema/auth/signup.schema';
 import { Public } from './decorators/public.decorator';
 import { LoginResponseSchema } from 'src/responseSchema/auth/login.schema';
 import { GetCurrentUser } from './decorators/get-current-user.decorator';
+import { TokenGuard } from './guards/token.guard';
+import { CurrentUserToken } from './decorators/current-user-token.decorator';
 
 @Controller('auth')
 @ApiTags('Authentication')
@@ -64,11 +66,17 @@ export class AuthController {
     return new SuccessResponse(ResponseMesages.USER_LOGOUT_SUCCESSFULLY);
   }
 
+  @Public()
+  @UseGuards(TokenGuard)
   @Patch('refresh-token')
-  async refreshToken(): Promise<any> {
-    return {
-      message: 'Refresh token successfully',
-    };
+  async refreshToken(
+    @GetCurrentUser('sub') user_id: string,
+    @CurrentUserToken() token: string,
+  ): Promise<SuccessResponse> {
+    const tokenResponse = await this.authService.refreshTokens(user_id, token);
+    return new SuccessResponse(ResponseMesages.TOKEN_REFRESHED_SUCCESSFULLY, {
+      token: tokenResponse,
+    });
   }
 
   @Post('forgot-password')

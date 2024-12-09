@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ForbiddenException,
   Injectable,
+  NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { UserEntity } from 'src/routes/users/entity/user.entity';
@@ -16,6 +17,7 @@ import { Tokens } from '../interfaces/tokens.interface';
 import { JwtPayload } from '../interfaces/jwt-payload.interface';
 import { generateOTP } from 'src/common/helper/helper';
 import { UserVerificationEntity } from '../entity/user_verification.entity';
+import { VerificationStatus } from '../entity/enum/verification-status.enum';
 
 @Injectable()
 export class AuthService {
@@ -200,6 +202,67 @@ export class AuthService {
         expiresIn: process.env.JWT_RESET_PASSWORD_EXPIRY_TIME,
       },
     );
-    return { otp: newOTP, key: verificationUrlEncyptedKey };
+    const hashedToken = await bcrypt.hash(verificationUrlEncyptedKey, 10);
+    hashedToken.replace(/[/\\]/g, '');
+    return { otp: newOTP, key: hashedToken };
+  }
+
+  async verifyUser(
+    userID: string,
+    otp: string,
+    urlKey: string,
+    verificationType: string,
+  ): Promise<void> {
+    const verificationRecord = await this.userVerificationRepository.findOne({
+      where: { user_id: userID },
+    });
+    if (!verificationRecord) {
+      throw new NotFoundException(ResponseMesages.USER_NOT_FOUND);
+    }
+    const currentDate = new Date();
+    if (verificationRecord.expiresAt < currentDate) {
+      await this.updateVeificationStatus(
+        userID,
+        verificationType,
+        VerificationStatus.EXPIRED,
+      );
+      throw new BadRequestException(ResponseMesages.VERIFICATION_EXPIRED);
+    }
+
+    if (verificationRecord.token !== urlKey) {
+      await this.updateVeificationStatus(
+        userID,
+        verificationType,
+        VerificationStatus.FAILED,
+      );
+      throw new BadRequestException(ResponseMesages.INVALID_URL);
+    }
+
+    if (verificationRecord.verificationType === 'EMAIL_VERIFICATION') {
+      if (verificationRecord.otpSecret !== otp) {
+        throw new BadRequestException(ResponseMesages.WRONG_OTP);
+      }
+    }
+
+    await this.updateVeificationStatus(
+      userID,
+      verificationType,
+      VerificationStatus.COMPLETED,
+    );
+  }
+
+  async updateVeificationStatus(
+    userID: string,
+    verificationType: string,
+    status: VerificationStatus,
+  ): Promise<void> {
+    await this.userVerificationRepository.update(
+      {
+        user_id: userID,
+        verificationType: verificationType,
+        status: VerificationStatus.PENDING,
+      },
+      { status: status },
+    );
   }
 }
