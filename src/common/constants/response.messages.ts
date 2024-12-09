@@ -9,4 +9,6 @@ export const ResponseMesages = {
   USER_RESTRICTED: 'Email login access is restricted!! Please contact helpdesk',
   WRONG_CREDENTIALS:
     'Wrong credentials!! Please enter a valid email address and password',
+  VERIFICATION_REQUIRED:
+    'Verification required!! OTP is sent to your email address',
 };

@@ -28,10 +28,17 @@ export class AuthController {
       userDetail.user,
       LoginResponseSchema,
     );
-    return new SuccessResponse(ResponseMesages.USER_LOGIN_SUCCESSFULLY, {
-      user: user,
-      token: userDetail.tokens,
-    });
+    return new SuccessResponse(
+      userDetail.isVerificationRequired
+        ? ResponseMesages.VERIFICATION_REQUIRED
+        : ResponseMesages.USER_LOGIN_SUCCESSFULLY,
+      {
+        user: user,
+        isVerificationRequired: userDetail.isVerificationRequired,
+        verificationToken: userDetail.verificationToken,
+        token: userDetail.tokens,
+      },
+    );
   }
 
   @Post('signup')

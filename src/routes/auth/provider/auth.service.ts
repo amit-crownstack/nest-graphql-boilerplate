@@ -14,12 +14,16 @@ import { ResponseMesages } from 'src/common/constants/response.messages';
 import { JwtService } from '@nestjs/jwt';
 import { Tokens } from '../interfaces/tokens.interface';
 import { JwtPayload } from '../interfaces/jwt-payload.interface';
+import { generateOTP } from 'src/common/helper/helper';
+import { UserVerificationEntity } from '../entity/user_verification.entity';
 
 @Injectable()
 export class AuthService {
   constructor(
     @InjectRepository(UserEntity)
     private userRepository: Repository<UserEntity>,
+    @InjectRepository(UserVerificationEntity)
+    private userVerificationRepository: Repository<UserVerificationEntity>,
     private readonly userservice: UsersService,
     private jwtService: JwtService,
   ) {}
@@ -29,9 +33,12 @@ export class AuthService {
    * @param userDetail
    * @returns userDetail
    */
-  async login(
-    userDetail: LoginUserBodyDto,
-  ): Promise<{ user: UserEntity; tokens?: Tokens }> {
+  async login(userDetail: LoginUserBodyDto): Promise<{
+    user: UserEntity;
+    isVerificationRequired: boolean;
+    verificationToken?: string;
+    tokens?: Tokens;
+  }> {
     // VALIDATE IF USER EXISTS
     const user = await this.userservice.getUserDetailByEmail(
       userDetail.userEmail,
@@ -52,19 +59,45 @@ export class AuthService {
     // VALIDATE IF USER IS ACTIVE
     if (!user.verified) {
       // TODO: Send OTP to user's email
-      return { user: user };
+      const verificationUrlEncyptedKey =
+        await this.createVerificationToken(user);
+      //SAVE RECORD IN USER VERIFICATION TABLE
+      await this.createVerificationRecord(
+        user.id,
+        verificationUrlEncyptedKey.otp,
+        verificationUrlEncyptedKey.key,
+        'EMAIL_VERIFICATION',
+      );
+
+      return {
+        user: user,
+        isVerificationRequired: true,
+        verificationToken: verificationUrlEncyptedKey.key,
+      };
     } else {
       // VALIDATE IF DUAL AUTH IS ACTIVE
       if (user.dual_auth) {
         // TODO: Send OTP to user's email
-        return { user: user };
+        const verificationUrlEncyptedKey =
+          await this.createVerificationToken(user);
+        //SAVE RECORD IN USER VERIFICATION TABLE
+        await this.createVerificationRecord(
+          user.id,
+          verificationUrlEncyptedKey.otp,
+          verificationUrlEncyptedKey.key,
+          'TWO_FACTOR_AUTH',
+        );
+
+        return {
+          user: user,
+          isVerificationRequired: true,
+          verificationToken: verificationUrlEncyptedKey.key,
+        };
       } else {
         // ALLOW USER TO LOGIN WITH ACCESS TOKEN AND REFRESH TOKEN
         const tokens = await this.generateTokens(user);
         await this.updateRefreshTokenHash(user.id, tokens.refreshToken);
-        console.log({ user: user, tokens: tokens });
-
-        return { user: user, tokens: tokens };
+        return { user: user, isVerificationRequired: false, tokens: tokens };
       }
     }
   }
@@ -132,5 +165,41 @@ export class AuthService {
 
   async logout(userId: string): Promise<void> {
     await this.userservice.updateRefreshToken(userId, null);
+  }
+
+  async createVerificationRecord(
+    userId: string,
+    otp: string,
+    encryptionKey: string,
+    verififcationType: string,
+  ): Promise<void> {
+    // TODO: Create a verification record in table user_verification
+    const currentDate = new Date();
+    const verificationRecord = this.userVerificationRepository.create({
+      user_id: userId,
+      verificationType: verififcationType,
+      otpSecret: otp,
+      token: encryptionKey,
+      expiresAt: new Date(currentDate.getTime() + 10 * 60 * 1000),
+    });
+    await this.userVerificationRepository.save(verificationRecord);
+  }
+
+  async createVerificationToken(
+    user: UserEntity,
+  ): Promise<{ otp: string; key: string }> {
+    const newOTP = generateOTP();
+    const verificationUrlEncyptedKey = await this.jwtService.signAsync(
+      {
+        email: user.useremail,
+        userID: user.id,
+        otp: newOTP,
+      },
+      {
+        secret: process.env.JWT_RESET_PASSWORD_SECRET_KEY,
+        expiresIn: process.env.JWT_RESET_PASSWORD_EXPIRY_TIME,
+      },
+    );
+    return { otp: newOTP, key: verificationUrlEncyptedKey };
   }
 }

@@ -4,23 +4,23 @@ import { VerificationStatus } from './enum/verification-status.enum';
 import { BaseEntity } from 'src/common/entity/baseEntity';
 
 @Entity('user_verification')
-export class UserVerification extends BaseEntity {
-  @Column({ type: 'uuid' })
+export class UserVerificationEntity extends BaseEntity {
+  @Column({ type: 'uuid', nullable: false })
   @Index()
-  userId: string;
+  user_id: string;
 
   @Column({
     type: 'enum',
     enum: VerificationType,
   })
-  verificationType: VerificationType;
+  verificationType: string;
 
   @Column({
     type: 'enum',
     enum: VerificationStatus,
     default: VerificationStatus.PENDING,
   })
-  status: VerificationStatus;
+  status: string;
 
   @Column({
     type: 'varchar',

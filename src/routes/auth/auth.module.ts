@@ -10,9 +10,10 @@ import { RefreshTokenStrategy } from './strategies/refresh-token.strategy';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { UserSession } from './entity/session.entity';
+import { UserVerificationEntity } from './entity/user_verification.entity';
 @Module({
   imports: [
-    TypeOrmModule.forFeature([UserEntity, UserSession]),
+    TypeOrmModule.forFeature([UserEntity, UserSession, UserVerificationEntity]),
     PassportModule,
     JwtModule.register({}),
   ],
