@@ -107,6 +107,11 @@ export class AuthService {
     }
   }
 
+  /**
+   * @param userDetail
+   * @returns userDetail
+   */
+
   async createNewUser(userDetail: RegisterUserBodyDto): Promise<UserEntity> {
     if (await this.userservice.getUserDetailByEmail(userDetail.userEmail)) {
       throw new BadRequestException(ResponseMesages.EMAIL_ALREADY_EXISTS);
@@ -121,6 +126,12 @@ export class AuthService {
     // TODO: send OTP to user's email for email verification
     return user;
   }
+
+  /**
+   * @param userId
+   * @param refreshToken
+   * @returns Tokens
+   */
 
   async refreshTokens(userId: string, refreshToken: string): Promise<Tokens> {
     const userSession = await this.userservice.findSessionById(userId);
@@ -138,6 +149,11 @@ export class AuthService {
     await this.updateRefreshTokenHash(user.id, tokens.refreshToken);
     return tokens;
   }
+
+  /**
+   * @param UserEntity
+   * @returns accessToken, refreshToken
+   */
 
   private async generateTokens(user: UserEntity): Promise<Tokens> {
     const payload: JwtPayload = {

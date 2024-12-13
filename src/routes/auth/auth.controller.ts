@@ -27,9 +27,16 @@ export class AuthController {
     private readonly responseFormatterService: ResponseFormatterService,
   ) {}
 
+  /**
+   * @api {post} /auth/login User Login
+   * @apiDescription Login a user using email and password
+   * @apiBody {Object} LoginUserBodyDto - Contains email and password
+   * @apiSuccess {Object} user - User details
+   * @apiSuccess {Boolean} isVerificationRequired - If verification is needed
+   * @apiSuccess {String} token - Access token
+   */
   @Public()
   @Post('login')
-  @Public()
   async login(@Body() body: LoginUserBodyDto): Promise<SuccessResponse> {
     const userDetail = await this.authService.login(body);
     const user = this.responseFormatterService.formatResponse(
@@ -49,9 +56,14 @@ export class AuthController {
     );
   }
 
+  /**
+   * @api {post} /auth/signup User Registration
+   * @apiDescription Register a new user
+   * @apiBody {Object} RegisterUserBodyDto - User registration data
+   * @apiSuccess {Object} user - Newly created user details
+   */
   @Public()
   @Post('signup')
-  @Public()
   async signup(@Body() body: RegisterUserBodyDto): Promise<SuccessResponse> {
     let userDetail: Partial<UserEntity> | Partial<UserEntity>[] =
       await this.authService.createNewUser(body);
@@ -65,6 +77,12 @@ export class AuthController {
     );
   }
 
+  /**
+   * @api {patch} /auth/logout User Logout
+   * @apiDescription Logs out the current user
+   * @apiHeader {String} Authorization - User's access token
+   * @apiSuccess {String} message - Logout success message
+   */
   @Patch('logout')
   async logout(
     @GetCurrentUser('sub') userID: string,
@@ -73,6 +91,12 @@ export class AuthController {
     return new SuccessResponse(ResponseMesages.USER_LOGOUT_SUCCESSFULLY);
   }
 
+  /**
+   * @api {patch} /auth/refresh-token Refresh Token
+   * @apiDescription Refreshes the access token
+   * @apiHeader {String} Authorization - Refresh token
+   * @apiSuccess {Object} tokens - New access and refresh tokens
+   */
   @Patch('refresh-token')
   async refreshToken(
     @GetCurrentUser('sub') user_id: string,
@@ -84,6 +108,12 @@ export class AuthController {
     });
   }
 
+  /**
+   * @api {post} /auth/forgot-password Forgot Password
+   * @apiDescription Sends a password reset email to the user
+   * @apiBody {String} userEmail - User's email address
+   * @apiSuccess {String} message - Email sent success message
+   */
   @Public()
   @Post('forgot-password')
   async forgotPassword(
@@ -96,6 +126,12 @@ export class AuthController {
     });
   }
 
+  /**
+   * @api {patch} /auth/reset-password Reset Password
+   * @apiDescription Resets the user's password
+   * @apiBody {Object} UserPasswordUpdateBodyDto - Reset password data
+   * @apiSuccess {String} message - Password reset success message
+   */
   @Public()
   @Patch('reset-password')
   async resetPassword(
@@ -110,6 +146,12 @@ export class AuthController {
     return new SuccessResponse(ResponseMesages.PASSWORD_RESET_SUCCESSFULLY);
   }
 
+  /**
+   * @api {post} /auth/verify-email Verify Email
+   * @apiDescription Verifies the user's email address
+   * @apiBody {Object} UserVerificationBodyDto - Verification details
+   * @apiSuccess {String} message - Verification success message
+   */
   @Public()
   @Post('verify-email')
   async verifyEmail(
@@ -125,6 +167,12 @@ export class AuthController {
     return new SuccessResponse(ResponseMesages.USER_VERIFIED_SUCCESSFULLY);
   }
 
+  /**
+   * @api {post} /auth/resend-verification-email Resend Verification Email
+   * @apiDescription Resends the verification email to the user
+   * @apiBody {Object} ResendVerificationBodyDto - User ID and verification type
+   * @apiSuccess {String} message - OTP sent success message
+   */
   @Public()
   @Post('resend-verification-email')
   async resendVerificationEmail(
@@ -137,6 +185,13 @@ export class AuthController {
     return new SuccessResponse(ResponseMesages.OTP_SENT_SUCCESSFULLY);
   }
 
+  /**
+   * @api {post} /auth/dual-auth Dual Authentication
+   * @apiDescription Validates dual authentication for a user
+   * @apiBody {Object} DualAuthVerificationBodyDto - Dual auth details
+   * @apiSuccess {Object} user - User details
+   * @apiSuccess {Object} tokens - Access tokens
+   */
   @Public()
   @Post('dual-auth')
   async dualAuth(
