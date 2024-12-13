@@ -17,5 +17,7 @@ export const ResponseMesages = {
   WRONG_OTP: 'Wrong OTP!! Please enter a valid OTP',
   INVALID_URL: 'Invalid URL!! Please try again',
   OTP_SENT_SUCCESSFULLY: 'OTP sent successfully',
-  OTP_VERIFIED_SUCCESSFULLY: 'OTP verified successfully',
+  USER_VERIFIED_SUCCESSFULLY: 'Verification successful',
+  VERIFICATION_EMAIL_SENT: 'Password reset email sent successfully',
+  PASSWORD_RESET_SUCCESSFULLY: 'Password reset successfully',
 };

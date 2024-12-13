@@ -18,6 +18,9 @@ import { JwtPayload } from '../interfaces/jwt-payload.interface';
 import { generateOTP } from 'src/common/helper/helper';
 import { UserVerificationEntity } from '../entity/user_verification.entity';
 import { VerificationStatus } from '../entity/enum/verification-status.enum';
+import moment from 'moment';
+import { VerificationType } from '../entity/enum/verification-type.enum';
+import { DualAuthVerificationBodyDto } from '../dto/dual-auth-body.dto';
 
 @Injectable()
 export class AuthService {
@@ -68,7 +71,7 @@ export class AuthService {
         user.id,
         verificationUrlEncyptedKey.otp,
         verificationUrlEncyptedKey.key,
-        'EMAIL_VERIFICATION',
+        VerificationType.EMAIL_VERIFICATION,
       );
 
       return {
@@ -87,7 +90,7 @@ export class AuthService {
           user.id,
           verificationUrlEncyptedKey.otp,
           verificationUrlEncyptedKey.key,
-          'TWO_FACTOR_AUTH',
+          VerificationType.TWO_FACTOR_AUTH,
         );
 
         return {
@@ -213,11 +216,22 @@ export class AuthService {
     urlKey: string,
     verificationType: string,
   ): Promise<void> {
-    const verificationRecord = await this.userVerificationRepository.findOne({
-      where: { user_id: userID },
-    });
+    const oneHourAgo = moment().subtract(1, 'hour').toDate();
+
+    const verificationRecord = await this.userVerificationRepository
+      .createQueryBuilder('verification')
+      .where('verification.user_id = :userID', { userID })
+      .andWhere('verification.verificationType = :verificationType', {
+        verificationType,
+      })
+      .andWhere('verification.status = :status', {
+        status: VerificationStatus.PENDING,
+      })
+      .andWhere('verification.created_at > :oneHourAgo', { oneHourAgo })
+      .getOne();
+
     if (!verificationRecord) {
-      throw new NotFoundException(ResponseMesages.USER_NOT_FOUND);
+      throw new NotFoundException(ResponseMesages.INVALID_URL);
     }
     const currentDate = new Date();
     if (verificationRecord.expiresAt < currentDate) {
@@ -238,10 +252,8 @@ export class AuthService {
       throw new BadRequestException(ResponseMesages.INVALID_URL);
     }
 
-    if (verificationRecord.verificationType === 'EMAIL_VERIFICATION') {
-      if (verificationRecord.otpSecret !== otp) {
-        throw new BadRequestException(ResponseMesages.WRONG_OTP);
-      }
+    if (verificationRecord.otpSecret !== otp) {
+      throw new BadRequestException(ResponseMesages.WRONG_OTP);
     }
 
     await this.updateVeificationStatus(
@@ -264,5 +276,144 @@ export class AuthService {
       },
       { status: status },
     );
+  }
+
+  async forgotPassword(userEmail: string): Promise<UserEntity> {
+    const user = await this.userservice.getUserDetailByEmail(userEmail);
+    if (!user) {
+      throw new BadRequestException(ResponseMesages.EMAIL_NOT_FOUND);
+    }
+    const verificationUrlEncyptedKey = await this.createVerificationToken(user);
+    //SAVE RECORD IN USER VERIFICATION TABLE
+    await this.createVerificationRecord(
+      user.id,
+      verificationUrlEncyptedKey.otp,
+      verificationUrlEncyptedKey.key,
+      VerificationType.PASSWORD_RESET,
+    );
+
+    return user;
+  }
+
+  async resetPassword(
+    userID: string,
+    otp: string,
+    urlKey: string,
+    newPassword: string,
+  ): Promise<void> {
+    const checkUserExist = await this.userservice.findUserById(userID);
+    if (!checkUserExist) {
+      throw new BadRequestException(ResponseMesages.USER_NOT_FOUND);
+    }
+
+    const getUserVerificationRecord =
+      await this.userVerificationRepository.findOne({
+        where: {
+          user_id: userID,
+          verificationType: VerificationType.PASSWORD_RESET,
+          status: VerificationStatus.PENDING,
+        },
+      });
+
+    if (!getUserVerificationRecord) {
+      throw new BadRequestException(ResponseMesages.INVALID_URL);
+    }
+
+    if (getUserVerificationRecord.isExpired) {
+      throw new BadRequestException(ResponseMesages.VERIFICATION_EXPIRED);
+    }
+
+    if (getUserVerificationRecord.token !== urlKey) {
+      await this.updateVeificationStatus(
+        userID,
+        VerificationType.PASSWORD_RESET,
+        VerificationStatus.FAILED,
+      );
+      throw new BadRequestException(ResponseMesages.INVALID_URL);
+    }
+
+    if (getUserVerificationRecord.otpSecret !== otp) {
+      throw new BadRequestException(ResponseMesages.WRONG_OTP);
+    }
+
+    await this.userservice.updateUserPassword(userID, newPassword);
+  }
+
+  async resendVerificationEmail(
+    userID: string,
+    verification_type: string,
+  ): Promise<void> {
+    const user = await this.userservice.findUserById(userID);
+    if (!user) {
+      throw new BadRequestException(ResponseMesages.USER_NOT_FOUND);
+    }
+
+    // DELETE PREVIOUS VERIFICATION RECORD
+    await this.userVerificationRepository.delete({
+      user_id: userID,
+      verificationType: verification_type,
+      status: VerificationStatus.PENDING,
+    });
+
+    // ADD NEW VERIFICATION RECORD
+    const verificationUrlEncyptedKey = await this.createVerificationToken(user);
+    //SAVE RECORD IN USER VERIFICATION TABLE
+    await this.createVerificationRecord(
+      user.id,
+      verificationUrlEncyptedKey.otp,
+      verificationUrlEncyptedKey.key,
+      verification_type,
+    );
+  }
+
+  async validateDualAuth(dualAuthBody: DualAuthVerificationBodyDto): Promise<{
+    user: UserEntity;
+    isVerificationRequired: boolean;
+    tokens: Tokens;
+  }> {
+    const user = await this.userservice.findUserById(dualAuthBody.user_id);
+    if (!user) {
+      throw new BadRequestException(ResponseMesages.USER_NOT_FOUND);
+    }
+
+    const getUserVerificationRecord =
+      await this.userVerificationRepository.findOne({
+        where: {
+          user_id: dualAuthBody.user_id,
+          verificationType: VerificationType.TWO_FACTOR_AUTH,
+          status: VerificationStatus.PENDING,
+        },
+      });
+
+    if (!getUserVerificationRecord) {
+      throw new BadRequestException(ResponseMesages.INVALID_URL);
+    }
+
+    if (getUserVerificationRecord.isExpired) {
+      throw new BadRequestException(ResponseMesages.VERIFICATION_EXPIRED);
+    }
+
+    if (getUserVerificationRecord.token !== dualAuthBody.verification_token) {
+      await this.updateVeificationStatus(
+        dualAuthBody.user_id,
+        VerificationType.PASSWORD_RESET,
+        VerificationStatus.FAILED,
+      );
+      throw new BadRequestException(ResponseMesages.INVALID_URL);
+    }
+
+    if (getUserVerificationRecord.otpSecret !== dualAuthBody.otp) {
+      throw new BadRequestException(ResponseMesages.WRONG_OTP);
+    }
+
+    await this.updateVeificationStatus(
+      dualAuthBody.user_id,
+      VerificationType.TWO_FACTOR_AUTH,
+      VerificationStatus.COMPLETED,
+    );
+
+    const tokens = await this.generateTokens(user);
+    await this.updateRefreshTokenHash(user.id, tokens.refreshToken);
+    return { user: user, isVerificationRequired: false, tokens: tokens };
   }
 }

@@ -30,7 +30,7 @@ export class TokenGuard implements CanActivate {
 
     // Validate refresh token
     if (!refreshToken) {
-      throw new UnauthorizedException('Refresh token is missing');
+      throw new UnauthorizedException('Token is missing');
     }
 
     // Attach the refresh token to the request for strategy to use

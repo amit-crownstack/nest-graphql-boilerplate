@@ -13,8 +13,13 @@ import { LoginResponseSchema } from 'src/responseSchema/auth/login.schema';
 import { GetCurrentUser } from './decorators/get-current-user.decorator';
 import { TokenGuard } from './guards/token.guard';
 import { CurrentUserToken } from './decorators/current-user-token.decorator';
+import { UserVerificationBodyDto } from './dto/user-verification.dto';
+import { UserPasswordUpdateBodyDto } from './dto/reset-password-body.dto';
+import { ResendVerificationBodyDto } from './dto/resend-verification.dto';
+import { DualAuthVerificationBodyDto } from './dto/dual-auth-body.dto';
 
 @Controller('auth')
+@UseGuards(TokenGuard)
 @ApiTags('Authentication')
 export class AuthController {
   constructor(
@@ -22,6 +27,7 @@ export class AuthController {
     private readonly responseFormatterService: ResponseFormatterService,
   ) {}
 
+  @Public()
   @Post('login')
   @Public()
   async login(@Body() body: LoginUserBodyDto): Promise<SuccessResponse> {
@@ -43,6 +49,7 @@ export class AuthController {
     );
   }
 
+  @Public()
   @Post('signup')
   @Public()
   async signup(@Body() body: RegisterUserBodyDto): Promise<SuccessResponse> {
@@ -66,8 +73,6 @@ export class AuthController {
     return new SuccessResponse(ResponseMesages.USER_LOGOUT_SUCCESSFULLY);
   }
 
-  @Public()
-  @UseGuards(TokenGuard)
   @Patch('refresh-token')
   async refreshToken(
     @GetCurrentUser('sub') user_id: string,
@@ -79,38 +84,69 @@ export class AuthController {
     });
   }
 
+  @Public()
   @Post('forgot-password')
-  async forgotPassword(): Promise<any> {
-    return {
-      message: 'Forgot password successfully',
-    };
+  async forgotPassword(
+    @Body('userEmail') userEmail: string,
+  ): Promise<SuccessResponse> {
+    const forgotPasswordResponse =
+      await this.authService.forgotPassword(userEmail);
+    return new SuccessResponse(ResponseMesages.VERIFICATION_EMAIL_SENT, {
+      user: forgotPasswordResponse,
+    });
   }
 
+  @Public()
   @Patch('reset-password')
-  async resetPassword(): Promise<any> {
-    return {
-      message: 'Reset password successfully',
-    };
+  async resetPassword(
+    @Body() reqBody: UserPasswordUpdateBodyDto,
+  ): Promise<SuccessResponse> {
+    this.authService.resetPassword(
+      reqBody.user_id,
+      reqBody.otp,
+      reqBody.verification_token,
+      reqBody.newPassword,
+    );
+    return new SuccessResponse(ResponseMesages.PASSWORD_RESET_SUCCESSFULLY);
   }
 
+  @Public()
   @Post('verify-email')
-  async verifyEmail(): Promise<any> {
-    return {
-      message: 'Verify email successfully',
-    };
+  async verifyEmail(
+    @Body() verification: UserVerificationBodyDto,
+  ): Promise<SuccessResponse> {
+    await this.authService.verifyUser(
+      verification.user_id,
+      verification.otp,
+      verification.verification_token,
+      verification.verification_type,
+    );
+
+    return new SuccessResponse(ResponseMesages.USER_VERIFIED_SUCCESSFULLY);
   }
 
+  @Public()
   @Post('resend-verification-email')
-  async resendVerificationEmail(): Promise<any> {
-    return {
-      message: 'Resend verification email successfully',
-    };
+  async resendVerificationEmail(
+    @Body() reqBody: ResendVerificationBodyDto,
+  ): Promise<SuccessResponse> {
+    await this.authService.resendVerificationEmail(
+      reqBody.user_id,
+      reqBody.verification_type,
+    );
+    return new SuccessResponse(ResponseMesages.OTP_SENT_SUCCESSFULLY);
   }
 
+  @Public()
   @Post('dual-auth')
-  async dualAuth(): Promise<any> {
-    return {
-      message: 'Dual auth successfully',
-    };
+  async dualAuth(
+    @Body() dualAuthBody: DualAuthVerificationBodyDto,
+  ): Promise<SuccessResponse> {
+    const userDetail = await this.authService.validateDualAuth(dualAuthBody);
+    return new SuccessResponse(ResponseMesages.USER_LOGIN_SUCCESSFULLY, {
+      user: userDetail,
+      isVerificationRequired: userDetail.isVerificationRequired,
+      tokens: userDetail.tokens,
+    });
   }
 }

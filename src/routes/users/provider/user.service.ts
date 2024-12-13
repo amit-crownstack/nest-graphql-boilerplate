@@ -60,4 +60,11 @@ export class UsersService {
       },
     });
   }
+
+  async updateUserPassword(userID: string, newPassword: string) {
+    return this.userRepository.update(
+      { id: userID },
+      { userpassword: newPassword },
+    );
+  }
 }
